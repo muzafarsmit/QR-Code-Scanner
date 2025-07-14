@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus QR Scanner</title>
+    <script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --accent: #10b981;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --gray: #94a3b8;
+            --danger: #ef4444;
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: var(--light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            overflow-x: hidden;
+        }
+
+        .floating-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.15;
+            background-image: 
+                radial-gradient(circle at 25% 25%, var(--primary), transparent 50%),
+                radial-gradient(circle at 75% 75%, var(--accent), transparent 50%);
+            animation: float 20s infinite alternate ease-in-out;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0); }
+            50% { transform: translate(-5%, 5%); }
+            100% { transform: translate(5%, -5%); }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
+        }
+
+        .header {
+            padding: 1.75rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+            opacity: 0.8;
+            z-index: -1;
+        }
+
+        .header h1 {
+            font-weight: 700;
+            font-size: 1.8rem;
+            margin-bottom: 0.25rem;
+            background: linear-gradient(to right, white, #e2e8f0);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .header p {
+            font-weight: 300;
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        .scanner-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1/1;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: transparent;
+        }
+
+        .scanner-frame {
+            position: relative;
+            width: 70%;
+            height: 70%;
+            border: 3px solid var(--accent);
+            border-radius: 16px;
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5),
+                        0 0 20px var(--accent),
+                        inset 0 0 20px var(--accent);
+            animation: scan 4s infinite linear;
+            overflow: hidden;
+        }
+
+        @keyframes scan {
+            0% { box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5),
+                             0 0 20px var(--accent),
+                             inset 0 0 20px var(--accent); }
+            25% { box-shadow: 0 -60px 0 1000px rgba(0, 0, 0, 0.3),
+                             0 0 20px var(--accent),
+                             inset 0 0 20px var(--accent); }
+            50% { box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5),
+                             0 0 20px var(--accent),
+                             inset 0 0 20px var(--accent); }
+            75% { box-shadow: 0 60px 0 1000px rgba(0, 0, 0, 0.3),
+                             0 0 20px var(--accent),
+                             inset 0 0 20px var(--accent); }
+            100% { box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5),
+                             0 0 20px var(--accent),
+                             inset 0 0 20px var(--accent); }
+        }
+
+        .scanner-corner {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-color: var(--accent);
+            border-style: solid;
+            border-width: 0;
+        }
+
+        .scanner-corner-tl {
+            top: 0;
+            left: 0;
+            border-top-width: 4px;
+            border-left-width: 4px;
+            border-radius: 12px 0 0 0;
+        }
+
+        .scanner-corner-tr {
+            top: 0;
+            right: 0;
+            border-top-width: 4px;
+            border-right-width: 4px;
+            border-radius: 0 12px 0 0;
+        }
+
+        .scanner-corner-bl {
+            bottom: 0;
+            left: 0;
+            border-bottom-width: 4px;
+            border-left-width: 4px;
+            border-radius: 0 0 0 12px;
+        }
+
+        .scanner-corner-br {
+            bottom: 0;
+            right: 0;
+            border-bottom-width: 4px;
+            border-right-width: 4px;
+            border-radius: 0 0 12px 0;
+        }
+
+        .controls {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .camera-select-container {
+            position: relative;
+        }
+
+        .camera-select-container::after {
+            content: '\f078';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: var(--gray);
+        }
+
+        .camera-select {
+            width: 100%;
+            padding: 0.9rem 1rem;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            background: rgba(15, 23, 42, 0.5);
+            color: var(--light);
+            font-size: 0.95rem;
+            appearance: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .camera-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.9rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            flex: 1;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: var(--light);
+            backdrop-filter: blur(5px);
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .result-container {
+            padding: 0 1.5rem 1.5rem;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-title {
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--accent);
+        }
+
+        .result-content {
+            background: rgba(15, 23, 42, 0.5);
+            padding: 1.25rem;
+            border-radius: 12px;
+            word-break: break-all;
+            border: 1px solid var(--glass-border);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: linear-gradient(to bottom, var(--primary), var(--accent));
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .action-btn {
+            padding: 0.7rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn.copy {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+
+        .action-btn.copy:hover {
+            background: rgba(99, 102, 241, 0.2);
+        }
+
+        .action-btn.open {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent);
+        }
+
+        .action-btn.open:hover {
+            background: rgba(16, 185, 129, 0.2);
+        }
+
+        .status {
+            padding: 0.75rem 1.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--gray);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .status .pulse {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--gray);
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.7; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.7; }
+        }
+
+        .footer {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--gray);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--dark);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                border-radius: 0;
+                max-width: 100%;
+            }
+            
+            body {
+                padding: 0;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-bg"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>Nexus QR Scanner</h1>
+            <p>Point your camera at a QR code to scan it instantly</p>
+        </div>
+
+        <div class="scanner-container">
+            <video id="preview"></video>
+            <div class="scanner-overlay">
+                <div class="scanner-frame">
+                    <div class="scanner-corner scanner-corner-tl"></div>
+                    <div class="scanner-corner scanner-corner-tr"></div>
+                    <div class="scanner-corner scanner-corner-bl"></div>
+                    <div class="scanner-corner scanner-corner-br"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status" id="status">
+            <div class="pulse"></div>
+            <span>Ready to scan</span>
+        </div>
+
+        <div class="controls">
+            <div class="camera-select-container">
+                <select id="camera-select" class="camera-select">
+                    <option value="" disabled selected>Select camera</option>
+                </select>
+            </div>
+
+            <div class="btn-group">
+                <button id="scan-btn" class="btn btn-primary">
+                    <i class="fas fa-qrcode"></i>
+                    Start Scan
+                </button>
+                <button id="stop-btn" class="btn btn-danger" disabled>
+                    <i class="fas fa-stop"></i>
+                    Stop
+                </button>
+            </div>
+        </div>
+
+        <div class="result-container" id="result-container">
+            <div class="result-title">
+                <i class="fas fa-check-circle"></i>
+                Scan Successful
+            </div>
+            <div class="result-content" id="result-content"></div>
+            <div class="action-buttons">
+                <button class="action-btn copy" id="copy-btn">
+                    <i class="far fa-copy"></i>
+                    Copy
+                </button>
+                <button class="action-btn open" id="open-btn">
+                    <i class="fas fa-external-link-alt"></i>
+                    Open Link
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <i class="far fa-copyright"></i>
+        <span>2023 Nexus QR Scanner | Modern Web Design</span>
+    </div>
+
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toast-message">Copied to clipboard!</span>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const scanBtn = document.getElementById('scan-btn');
+            const stopBtn = document.getElementById('stop-btn');
+            const cameraSelect = document.getElementById('camera-select');
+            const resultContainer = document.getElementById('result-container');
+            const resultContent = document.getElementById('result-content');
+            const status = document.getElementById('status');
+            const copyBtn = document.getElementById('copy-btn');
+            const openBtn = document.getElementById('open-btn');
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            
+            let scanner = null;
+            let lastScanTime = 0;
+            let currentScanResult = '';
+
+            // Initialize camera selection
+            function initCameras() {
+                status.innerHTML = '<div class="pulse"></div><span>Loading cameras...</span>';
+                
+                Instascan.Camera.getCameras().then(function(cameras) {
+                    if (cameras.length > 0) {
+                        cameraSelect.innerHTML = '<option value="" disabled selected>Select camera</option>';
+                        cameras.forEach(camera => {
+                            const option = document.createElement('option');
+                            option.value = camera.id;
+                            option.text = camera.name || `Camera ${cameraSelect.length}`;
+                            cameraSelect.appendChild(option);
+                        });
+                        
+                        scanBtn.disabled = false;
+                        status.innerHTML = '<div class="pulse" style="background: var(--accent)"></div><span>Ready to scan</span>';
+                    } else {
+                        status.innerHTML = '<div class="pulse" style="background: var(--danger)"></div><span>No cameras found</span>';
+                        scanBtn.disabled = true;
+                    }
+                }).catch(function(e) {
+                    console.error(e);
+                    status.innerHTML = '<div class="pulse" style="background: var(--danger)"></div><span>Camera access error</span>';
+                    scanBtn.disabled = true;
+                });
+            }
+
+            initCameras();
+
+            // Show toast notification
+            function showToast(message, isSuccess = true) {
+                toastMessage.textContent = message;
+                toast.style.background = isSuccess ? 'var(--dark)' : 'var(--danger)';
+                toast.querySelector('i').className = isSuccess ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+                toast.classList.add('show');
+                
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+
+            // Start scanning
+            scanBtn.addEventListener('click', function() {
+                const selectedCameraId = cameraSelect.value;
+                if (!selectedCameraId) {
+                    showToast('Please select a camera first', false);
+                    return;
+                }
+                
+                scanner = new Instascan.Scanner({
+                    video: document.getElementById('preview'),
+                    mirror: false,
+                    captureImage: false,
+                    backgroundScan: true,
+                    refractoryPeriod: 5000 // Prevent duplicate scans
+                });
+                
+                scanner.addListener('scan', function(content) {
+                    const now = Date.now();
+                    if (now - lastScanTime < 2000) return; // Prevent rapid duplicate scans
+                    lastScanTime = now;
+                    
+                    currentScanResult = content;
+                    resultContent.textContent = content;
+                    resultContainer.style.display = 'block';
+                    
+                    // Scroll to result
+                    resultContainer.scrollIntoView({ behavior: 'smooth' });
+                    
+                    // Update status
+                    status.innerHTML = '<div class="pulse" style="background: var(--accent)"></div><span>Scan successful!</span>';
+                    
+                    // Vibrate on successful scan (mobile)
+                    if (navigator.vibrate) {
+                        navigator.vibrate(200);
+                    }
+                    
+                    // Show success toast
+                    showToast('QR Code scanned successfully!');
+                });
+                
+                Instascan.Camera.getCameras().then(function(cameras) {
+                    const selectedCamera = cameras.find(c => c.id === selectedCameraId);
+                    if (selectedCamera) {
+                        scanner.start(selectedCamera).then(function() {
+                            scanBtn.disabled = true;
+                            stopBtn.disabled = false;
+                            cameraSelect.disabled = true;
+                            status.innerHTML = '<div class="pulse" style="background: var(--accent)"></div><span>Scanning...</span>';
+                        }).catch(function(e) {
+                            console.error(e);
+                            showToast('Error starting scanner: ' + e.message, false);
+                        });
+                    }
+                });
+            });
+            
+            // Stop scanning
+            stopBtn.addEventListener('click', function() {
+                if (scanner) {
+                    scanner.stop().then(function() {
+                        scanBtn.disabled = false;
+                        stopBtn.disabled = true;
+                        cameraSelect.disabled = false;
+                        status.innerHTML = '<div class="pulse" style="background: var(--accent)"></div><span>Ready to scan</span>';
+                    });
+                }
+            });
+            
+            // Copy result to clipboard
+            copyBtn.addEventListener('click', function() {
+                if (!currentScanResult) return;
+                
+                navigator.clipboard.writeText(currentScanResult).then(function() {
+                    showToast('Copied to clipboard!');
+                }).catch(function() {
+                    showToast('Failed to copy', false);
+                });
+            });
+            
+            // Open result as URL if valid
+            openBtn.addEventListener('click', function() {
+                if (!currentScanResult) return;
+                
+                try {
+                    // Check if it's a valid URL
+                    new URL(currentScanResult);
+                    window.open(currentScanResult, '_blank');
+                } catch (e) {
+                    showToast('Not a valid URL', false);
+                }
+            });
+            
+            // Handle page visibility changes
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden && scanner) {
+                    scanner.stop();
+                    scanBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    cameraSelect.disabled = false;
+                    status.innerHTML = '<div class="pulse" style="background: var(--gray)"></div><span>Paused (tab inactive)</span>';
+                }
+            });
+            
+            // Allow camera switch when multiple cameras are available
+            cameraSelect.addEventListener('change', function() {
+                if (scanner && scanner.active) {
+                    stopBtn.click();
+                    setTimeout(() => scanBtn.click(), 300);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
