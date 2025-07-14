@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Scanner</title>
+    <script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --accent: #3b82f6;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --success: #10b981;
+            --error: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            background-color: var(--dark);
+            color: var(--light);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .scanner-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .scanner-frame {
+            position: relative;
+            width: 70%;
+            height: 70%;
+            max-width: 300px;
+            max-height: 300px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.7);
+        }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+            animation: scan 2.5s linear infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        .corner {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-color: var(--accent);
+            border-style: solid;
+            border-width: 0;
+        }
+
+        .corner-tl {
+            top: 0;
+            left: 0;
+            border-top-width: 4px;
+            border-left-width: 4px;
+            border-radius: 12px 0 0 0;
+        }
+
+        .corner-tr {
+            top: 0;
+            right: 0;
+            border-top-width: 4px;
+            border-right-width: 4px;
+            border-radius: 0 12px 0 0;
+        }
+
+        .corner-bl {
+            bottom: 0;
+            left: 0;
+            border-bottom-width: 4px;
+            border-left-width: 4px;
+            border-radius: 0 0 0 12px;
+        }
+
+        .corner-br {
+            bottom: 0;
+            right: 0;
+            border-bottom-width: 4px;
+            border-right-width: 4px;
+            border-radius: 0 0 12px 0;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 24px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: none;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .result-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--dark);
+            z-index: 20;
+            padding: 24px;
+            display: none;
+            flex-direction: column;
+        }
+
+        .result-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            word-break: break-all;
+            font-size: 18px;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 24px;
+        }
+
+        .action-btn {
+            padding: 12px 24px;
+            border-radius: 50px;
+            border: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .status {
+            position: absolute;
+            top: 24px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-size: 14px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div class="scanner-container">
+        <video id="preview"></video>
+        <div class="scanner-overlay">
+            <div class="scanner-frame">
+                <div class="scan-line"></div>
+                <div class="corner corner-tl"></div>
+                <div class="corner corner-tr"></div>
+                <div class="corner corner-bl"></div>
+                <div class="corner corner-br"></div>
+            </div>
+        </div>
+        
+        <div class="status" id="status">Point camera at QR code</div>
+        
+        <div class="controls">
+            <button id="toggle-btn" class="btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 1v22h22V1H1zM14 7h3v3h-3V7zM7 7h3v3H7V7z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="result-container" id="result-container">
+        <button class="close-btn" id="close-btn">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+                <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+        </button>
+        <div class="result-content" id="result-content"></div>
+        <div class="result-actions">
+            <button class="action-btn" id="copy-btn" style="background: rgba(59, 130, 246, 0.1); color: var(--accent);">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                Copy
+            </button>
+            <button class="action-btn" id="open-btn" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                Open
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleBtn = document.getElementById('toggle-btn');
+            const closeBtn = document.getElementById('close-btn');
+            const resultContainer = document.getElementById('result-container');
+            const resultContent = document.getElementById('result-content');
+            const status = document.getElementById('status');
+            const copyBtn = document.getElementById('copy-btn');
+            const openBtn = document.getElementById('open-btn');
+            
+            let scanner = null;
+            let currentCamera = null;
+            let currentResult = '';
+            let isScanning = false;
+
+            // Initialize scanner
+            function initScanner() {
+                scanner = new Instascan.Scanner({
+                    video: document.getElementById('preview'),
+                    mirror: false,
+                    captureImage: false,
+                    backgroundScan: true,
+                    refractoryPeriod: 5000
+                });
+
+                scanner.addListener('scan', function(content) {
+                    if (content === currentResult) return;
+                    
+                    currentResult = content;
+                    resultContent.textContent = content;
+                    resultContainer.style.display = 'flex';
+                    status.textContent = 'QR code scanned';
+                    
+                    if (navigator.vibrate) {
+                        navigator.vibrate(100);
+                    }
+                });
+
+                // Automatically select back camera if available
+                Instascan.Camera.getCameras().then(function(cameras) {
+                    if (cameras.length > 0) {
+                        // Prefer back camera
+                        const backCamera = cameras.find(c => c.name.toLowerCase().includes('back'));
+                        currentCamera = backCamera || cameras[0];
+                        startScanning();
+                    } else {
+                        status.textContent = 'No camera found';
+                    }
+                }).catch(function(e) {
+                    console.error(e);
+                    status.textContent = 'Camera error';
+                });
+            }
+
+            function startScanning() {
+                if (!scanner || !currentCamera) return;
+                
+                scanner.start(currentCamera).then(function() {
+                    isScanning = true;
+                    status.textContent = 'Scanning...';
+                }).catch(function(e) {
+                    console.error(e);
+                    status.textContent = 'Failed to start camera';
+                });
+            }
+
+            function stopScanning() {
+                if (!scanner) return;
+                
+                scanner.stop().then(function() {
+                    isScanning = false;
+                    status.textContent = 'Camera stopped';
+                });
+            }
+
+            function toggleCamera() {
+                if (isScanning) {
+                    stopScanning();
+                    toggleBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 1v22h22V1H1zM14 7h3v3h-3V7zM7 7h3v3H7V7z"/>
+                        </svg>
+                    `;
+                } else {
+                    startScanning();
+                    toggleBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M10 15l-4-4 4-4"/>
+                            <path d="M14 15l4-4-4-4"/>
+                        </svg>
+                    `;
+                }
+            }
+
+            // Close result view and resume scanning
+            function closeResult() {
+                resultContainer.style.display = 'none';
+                currentResult = '';
+                if (!isScanning) {
+                    toggleCamera();
+                }
+            }
+
+            // Copy result to clipboard
+            function copyResult() {
+                if (!currentResult) return;
+                
+                navigator.clipboard.writeText(currentResult).then(function() {
+                    status.textContent = 'Copied to clipboard';
+                    setTimeout(() => {
+                        if (resultContainer.style.display === 'flex') {
+                            status.textContent = 'QR code scanned';
+                        } else {
+                            status.textContent = 'Scanning...';
+                        }
+                    }, 2000);
+                }).catch(function() {
+                    status.textContent = 'Failed to copy';
+                });
+            }
+
+            // Open result as URL if valid
+            function openResult() {
+                if (!currentResult) return;
+                
+                try {
+                    // Check if it's a valid URL
+                    new URL(currentResult);
+                    window.open(currentResult, '_blank');
+                } catch (e) {
+                    status.textContent = 'Not a valid URL';
+                    setTimeout(() => {
+                        status.textContent = 'QR code scanned';
+                    }, 2000);
+                }
+            }
+
+            // Event listeners
+            toggleBtn.addEventListener('click', toggleCamera);
+            closeBtn.addEventListener('click', closeResult);
+            copyBtn.addEventListener('click', copyResult);
+            openBtn.addEventListener('click', openResult);
+
+            // Initialize
+            initScanner();
+
+            // Handle page visibility changes
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden && isScanning) {
+                    stopScanning();
+                } else if (!document.hidden && !isScanning && resultContainer.style.display !== 'flex') {
+                    startScanning();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
